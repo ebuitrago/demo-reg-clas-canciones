@@ -1,5 +1,4 @@
-# Dependencias del servicio (las que instala Render).
-# Versiones fijadas: el artefacto .joblib debe crearse con estas mismas versiones.
+# Versiones fijadas: el modelo .pkl debe crearse con estas mismas versiones.
 numpy==2.2.6
 pandas==2.2.3
 scikit-learn==1.6.1
@@ -8,3 +7,7 @@ joblib==1.6.0
 fastapi==0.115.12
 uvicorn==0.34.2
 pydantic==2.11.4
+# pruebas y prueba de humo
+pytest==8.3.5
+httpx==0.28.1
+requests==2.32.3

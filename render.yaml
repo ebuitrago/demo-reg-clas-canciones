@@ -1,7 +1,7 @@
-# Blueprint de Render: New + > Blueprint > seleccionar el fork de este repositorio.
+# Render: New + > Blueprint > seleccionar su repositorio.
 services:
   - type: web
-    name: prediccion-canciones
+    name: demo-reg-clas-canciones
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
@@ -10,5 +10,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
-      - key: RUTA_MODELO
-        value: models/modelo.joblib

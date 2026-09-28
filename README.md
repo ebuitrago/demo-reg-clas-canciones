@@ -1,214 +1,186 @@
 <div align="center">
 
-# Predicción de popularidad de canciones: del análisis al uso
+# Predicción de popularidad de canciones
 
-Repositorio de referencia para un taller práctico sobre regresión lineal, encadenado con clasificación binaria
+Repositorio base del taller de regresión lineal (Semana 9) y clasificación binaria (Semana 10)
 
-[![CI](https://github.com/ebuitrago/prediccion-canciones/actions/workflows/ci.yml/badge.svg)](https://github.com/ebuitrago/prediccion-canciones/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
 [![Deploy](https://img.shields.io/badge/Deploy-Render-46E3B7?logo=render&logoColor=white)](https://render.com)
-[![Licencia](https://img.shields.io/badge/Licencia-MIT-blue)](LICENSE)
-
-**[Demo en vivo](https://prediccion-canciones.onrender.com)** |
-**[Guía de despliegue](docs/DESPLIEGUE.md)** |
-**[Contrato del artefacto](docs/ARTEFACTO.md)** |
-**[Diccionario de datos](docs/DATOS.md)**
 
 </div>
 
 ---
 
-Una disquera debe decidir, antes del lanzamiento, en qué canciones invertir promoción. El taller aborda esa decisión en dos partes que comparten el caso, los datos y el servicio de predicción:
+Una disquera debe decidir, antes del lanzamiento, en qué canciones invertir promoción. Este repositorio contiene un servicio de predicción listo para publicar y el código que entrena los modelos de referencia de las dos semanas del taller.
 
-- **Parte 1, regresión lineal.** Se predice la popularidad que alcanzará cada canción, de 0 a 100, y se recomienda promocionarla si la predicción supera un corte.
-- **Parte 2, clasificación binaria.** El objetivo pasa a ser `es_hit` (sí o no) y se recomienda promocionar si la probabilidad de hit supera un umbral, que se deriva del costo de cada tipo de error.
+El servicio lee un único archivo, `models/modelo.pkl`, que contiene el modelo entrenado y su ficha. **Su trabajo es reemplazar ese archivo por el de su propio modelo y publicar el servicio en Render.** No necesita modificar el servicio: la tarea, la regla de decisión y el error esperado se leen de la ficha.
 
-Los criterios de la parte 1 (momento de la predicción, control de fuga, línea base, validación temporal y ficha del modelo) se aplican sin cambios en la parte 2. Entre una parte y otra solo cambia el artefacto.
+## Las dos semanas
 
-El repositorio toma el modelo construido en el notebook y lo convierte en algo que otras personas pueden usar sin repetir el análisis: un artefacto, que reúne el pipeline con su ficha, y un servicio HTTP que responde, para cada canción, la predicción y la decisión que sostiene.
-
-Su trabajo en cada parte consiste en reemplazar el artefacto por el suyo, con una ficha respaldada por la evidencia de su análisis, y publicar el servicio en Render.
-
-## Principio de diseño
-
-El servicio no contiene reglas de negocio propias. La tarea, la regla de decisión (el corte en la parte 1, el umbral en la parte 2), el error esperado y las variables excluidas se leen de la ficha del artefacto. En consecuencia, el servicio, el cliente web y las pruebas son los mismos en las dos partes, y cambiar de modelo equivale a cambiar un archivo.
-
-## Las dos partes del taller
-
-| | Parte 1: regresión lineal | Parte 2: clasificación binaria |
+| | Semana 9: regresión lineal | Semana 10: clasificación binaria |
 |---|---|---|
-| Pregunta de negocio | ¿Qué popularidad alcanzará la canción? | ¿La canción será un hit? |
+| Pregunta | ¿Qué popularidad alcanzará la canción? | ¿La canción será un hit? |
 | Objetivo | `popularidad` (0 a 100) | `es_hit` (1 si la popularidad llega a 70) |
-| Variables de entrada | Las 10 de `COLUMNAS_ENTRADA` | Las mismas 10 |
-| Variables excluidas por fuga | `reproducciones_sem1` (posterior al lanzamiento), `es_hit` (se calcula del objetivo) | `reproducciones_sem1` (posterior al lanzamiento), `popularidad` (define el objetivo) |
-| Modelo de referencia | `LinearRegression` con duración² | `LogisticRegression` |
-| Línea base | Media de popularidad por género | Predecir siempre "no hit" |
-| Métricas | MAE, RMSE, R², sesgo, error por género | Precisión, exhaustividad (recall), matriz de confusión, costo total de los errores |
-| Resultado de referencia en 2020-2025 | MAE 5,75 frente a 10,44 de la línea base | Costo 99 frente a 318 de la línea base |
-| Regla de decisión | Promocionar si la popularidad esperada supera el corte | Promocionar si la probabilidad de hit supera el umbral |
-| Origen de la regla | Quien responde por el presupuesto fija el corte (60, 65 o 70) | Quien responde por el presupuesto fija los costos (falso negativo 3, falso positivo 1); el umbral es el que minimiza el costo |
-| Respuesta de `/predecir` | `popularidad_esperada`, `rango`, `corte_promocion` | `probabilidad_hit`, `umbral` |
-| Entrenamiento | `python -m src.entrenar_regresion` | `python -m src.entrenar_clasificacion` |
+| Variables excluidas | `reproducciones_sem1`, `es_hit` | `reproducciones_sem1`, `popularidad` |
+| Modelo de referencia | Regresión lineal con duración² | Regresión logística |
+| Resultado de referencia (2020-2025) | MAE 5,75 frente a 10,44 de la línea base | Costo 99 frente a 318 de la línea base |
+| Regla de decisión | Promocionar si la popularidad esperada supera el corte (65) | Promocionar si la probabilidad de hit supera el umbral (0,27) |
+| Código de entrenamiento | `src/entrenar_semana9_regresion.py` | `src/entrenar_semana10_clasificacion.py` |
 
-La validación es temporal en ambas partes: se entrena con las canciones de 1995 a 2019 (1.585) y se evalúa con las de 2020 a 2025 (415), porque la disquera siempre predice canciones que aún no se han lanzado. En la parte 2 el umbral se elige con probabilidades fuera de muestra dentro del periodo de entrenamiento, de modo que el periodo de prueba no interviene en ninguna decisión. Las probabilidades de la regresión logística no están calibradas; revisarlo forma parte del análisis de la parte 2.
+En las dos semanas se entrena con las canciones de 1995 a 2019 y se evalúa con las de 2020 a 2025. El repositorio trae el modelo de la Semana 9 en `models/modelo.pkl`.
 
-## Del notebook a la decisión
+## Qué tiene que hacer
 
-```mermaid
-flowchart LR
-    N["Notebook<br/>análisis y registro comparativo"] -- "guardar(pipeline, ficha)" --> A
-    subgraph S["Servicio FastAPI en Render, igual en las dos partes"]
-        A[("Artefacto<br/>models/modelo.joblib<br/>pipeline + ficha")] --> M["src/app/main.py<br/>/salud, /modelo, /predecir"]
-        E["src/app/esquemas.py<br/>contrato de entrada y salida"] --> M
-    end
-    M -- "HTTP, JSON" --> C["Cliente web<br/>public/index.html"]
-    M -- "HTTP, JSON" --> L["src/consumir.py<br/>reportes/lista_promocion.csv"]
+1. Clone el repositorio e instale las dependencias (ver [Ejecución local](#ejecución-local)).
+2. Entrene su modelo y guárdelo en `models/modelo.pkl` con su ficha (ver [Crear su modelo](#crear-su-modelo)).
+3. Compruebe con `pytest -q` que el servicio lo carga y responde.
+4. Suba el cambio a su repositorio en GitHub y publique el servicio en Render (ver [Publicar en Render](#publicar-en-render)).
+5. Entregue la URL del servicio. Se califica con `python -m src.probar_servicio SU_URL`.
+
+En la Semana 10 se repiten los pasos 2 a 5 con el clasificador, sobre el mismo repositorio y el mismo servicio.
+
+## Crear su modelo
+
+**Opción A: desde el código del repositorio.** Edite `construir_pipeline()` y `NOMBRE` en el script de la semana y ejecútelo. El script entrena, evalúa, arma la ficha y escribe `models/modelo.pkl`.
+
+```bash
+python -m src.entrenar_semana9_regresion        # Semana 9
+python -m src.entrenar_semana10_clasificacion   # Semana 10
 ```
 
-Las flechas van en un solo sentido: el análisis produce el artefacto, el artefacto alimenta al servicio y el servicio alimenta a quien decide. El cliente no ve el modelo, solo la ficha y las predicciones; el servicio no ve los datos de entrenamiento, solo el artefacto.
+**Opción B: desde su notebook.** Use las funciones del repositorio para que el servicio pueda cargar el archivo:
 
-### Correspondencia entre el notebook y el repositorio
+```python
+import sys
+sys.path.append("ruta/a/demo-reg-clas-canciones")
 
-| En el notebook | En el repositorio | Motivo |
-|---|---|---|
-| Columnas de entrada y variable derivada `duracion_c2` | `src/variables.py` | El entrenamiento y el servicio deben usar exactamente las mismas |
-| Rutas, semilla, año de corte, corte de promoción, costos de error | `src/config.py` | Un solo lugar para los parámetros del análisis |
-| Carga y partición temporal | `src/datos.py` | Las dos partes usan la misma partición |
-| Preprocesamiento y estimador | `pipeline` dentro del artefacto | Lo que se evalúa es lo que se despliega |
-| Registro comparativo, línea base, métricas, límites | `ficha` dentro del artefacto | El modelo viaja con su evidencia; `GET /modelo` la expone |
-| Corte de promoción o costos y umbral | `ficha["decision"]` | La regla es parte del análisis, no del código del servicio |
-| Lista de canciones a promocionar | `reportes/lista_promocion.csv` | Es el resultado que usa la disquera |
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import FunctionTransformer
+from src.variables import COLUMNAS_ENTRADA, derivadas, preprocesamiento
+from src.artefacto import guardar
+
+mi_pipeline = make_pipeline(FunctionTransformer(derivadas), preprocesamiento(), MiEstimador())
+mi_pipeline.fit(X_entrenamiento[COLUMNAS_ENTRADA], y_entrenamiento)
+
+guardar(mi_pipeline, mi_ficha, "ruta/a/demo-reg-clas-canciones/models/modelo.pkl")
+```
+
+`guardar()` revisa la ficha y prueba el pipeline antes de escribir el archivo; si falta algo, el mensaje dice qué.
+
+### Qué debe cumplir el archivo
+
+- **Entrada.** El pipeline recibe las 10 columnas crudas de `COLUMNAS_ENTRADA` (`src/variables.py`). El preprocesamiento va dentro del pipeline. Si crea una variable derivada nueva, agréguela en `derivadas()` de `src/variables.py` y no en el notebook, porque el servicio debe encontrarla al cargar el archivo.
+- **Ficha.** Debe tener `nombre`, `tarea` (`"regresion"` o `"clasificacion"`), `objetivo`, `momento_prediccion`, `variables_excluidas`, `linea_base`, `desempeno` y `decision`.
+  - En regresión, `desempeno` lleva `mae` y `decision` lleva `corte_promocion`.
+  - En clasificación, `decision` lleva `umbral` y el modelo debe tener `predict_proba`.
+  - Los scripts de `src/` muestran una ficha completa para cada semana.
+- **Versiones.** Entrene con las versiones de `requirements.txt`. Un `.pkl` creado con otra versión de scikit-learn puede no cargar en Render. En Colab, ejecute primero `pip install -r requirements.txt`.
+- **Tamaño.** Menos de 20 MB. Un Random Forest sin límite de profundidad puede superarlo.
 
 ## API
 
-| Método | Ruta | Respuesta | Códigos |
-|--------|------|-----------|---------|
-| `GET` | `/` | Cliente web (`public/index.html`) | `200` |
-| `GET` | `/salud` | Estado del servicio, modelo y tarea cargados | `200` |
-| `GET` | `/modelo` | Ficha: qué predice, con qué datos, qué tan bien y qué decisión sostiene | `200`, `503` sin modelo |
-| `POST` | `/predecir` | Predicción y decisión para una canción, según la tarea cargada | `200`, `422` entrada inválida, `503` sin modelo |
-| `POST` | `/predecir_lote` | Lo mismo para hasta 1.000 canciones | `200`, `413` lote demasiado grande, `422`, `503` |
+| Método | Ruta | Respuesta |
+|--------|------|-----------|
+| `GET` | `/docs` | Documentación interactiva: permite probar todas las rutas desde el navegador |
+| `GET` | `/salud` | Estado del servicio y modelo cargado |
+| `GET` | `/modelo` | Ficha del modelo |
+| `POST` | `/predecir` | Predicción y decisión para una canción |
+| `POST` | `/predecir_lote` | Lo mismo para hasta 1.000 canciones |
 
-La documentación interactiva está en `/docs`. La misma canción recibe una respuesta distinta según el artefacto cargado.
-
-Parte 1, artefacto de regresión:
+Ejemplo de entrada para `/predecir`:
 
 ```json
-{"tarea": "regresion", "modelo": "lineal + duración² (2026-09-27)",
- "popularidad_esperada": 84.8, "rango": [79.1, 90.6], "corte_promocion": 65.0,
- "probabilidad_hit": null, "umbral": null,
+{"bailabilidad": 0.72, "energia": 0.65, "valencia": 0.55, "acustica": 0.12, "tempo": 118,
+ "duracion_min": 3.4, "volumen_db": -6.5, "anio": 2026, "colaboracion": 1, "genero": "urbano"}
+```
+
+Respuesta con el modelo de la Semana 9:
+
+```json
+{"tarea": "regresion", "popularidad_esperada": 84.8, "rango": [79.1, 90.6], "corte_promocion": 65.0,
  "promocionar": true, "explicacion": "popularidad esperada 84.8 (±5.75) supera el corte 65"}
 ```
 
-Parte 2, artefacto de clasificación:
+Con el modelo de la Semana 10, la misma entrada devuelve `probabilidad_hit` y `umbral` en lugar de `popularidad_esperada`, `rango` y `corte_promocion`. Si la entrada trae un campo que no existe antes del lanzamiento, como `reproducciones_sem1`, el servicio responde `422`.
 
-```json
-{"tarea": "clasificacion", "modelo": "logística + umbral por costos (2026-09-27)",
- "popularidad_esperada": null, "rango": null, "corte_promocion": null,
- "probabilidad_hit": 0.979, "umbral": 0.27,
- "promocionar": true, "explicacion": "probabilidad de hit 0.98 supera el umbral 0.27"}
-```
-
-`tarea`, `modelo`, `promocionar` y `explicacion` siempre tienen valor; los campos de la otra tarea llegan en `null`. La entrada es la misma en las dos partes y se valida contra `src/app/esquemas.py`: rango de cada variable, géneros permitidos y ningún campo adicional. Enviar `reproducciones_sem1`, `popularidad` o `es_hit` produce `422`, porque el contrato solo admite lo que existe en el momento de decidir.
-
-## Estructura del proyecto
+## Estructura
 
 ```
-prediccion-canciones/
-├── .github/workflows/ci.yml       # Integración continua: ruff y pytest en cada push
-├── data/canciones.csv             # 2.000 canciones sintéticas, 1995-2025 (ver docs/DATOS.md)
-├── docs/                          # ARTEFACTO.md, DATOS.md, DESPLIEGUE.md
-├── models/modelo.joblib           # Artefacto: pipeline + ficha, el archivo que usted reemplaza
-├── notebooks/
-│   └── 01_regresion_popularidad.ipynb   # Análisis de la parte 1
-├── public/index.html              # Cliente web: muestra la ficha y predice
-├── reportes/                      # Entregables generados: registro comparativo y lista de promoción
+demo-reg-clas-canciones/
+├── data/canciones.csv                   # 2.000 canciones sintéticas, 1995-2025
+├── models/modelo.pkl                    # El archivo que usted reemplaza
 ├── src/
-│   ├── config.py                  # Rutas y parámetros del análisis
-│   ├── datos.py                   # Carga y partición temporal
-│   ├── variables.py               # Columnas de entrada, variables derivadas y preprocesamiento
-│   ├── artefacto.py               # guardar() y cargar(): el contrato del artefacto
-│   ├── entrenar_regresion.py      # Parte 1: entrena la regresión y escribe el artefacto
-│   ├── entrenar_clasificacion.py  # Parte 2: entrena el clasificador, elige el umbral y escribe el artefacto
-│   ├── consumir.py                # Cliente en lote: produce la lista de promoción
-│   ├── probar_servicio.py         # Prueba de humo contra un servicio en ejecución
+│   ├── variables.py                     # Columnas de entrada, variables derivadas y partición temporal
+│   ├── artefacto.py                     # guardar() y cargar() del modelo
+│   ├── entrenar_semana9_regresion.py    # Entrena el modelo de la Semana 9
+│   ├── entrenar_semana10_clasificacion.py  # Entrena el modelo de la Semana 10
+│   ├── probar_servicio.py               # Prueba de humo contra el servicio publicado
 │   └── app/
-│       ├── esquemas.py            # Contrato HTTP de entrada y salida (Pydantic)
-│       └── main.py                # Servicio FastAPI
-├── tests/                         # Pruebas de datos, variables, artefacto y servicio
-├── Makefile                       # Atajos para los comandos frecuentes
-├── pyproject.toml                 # Metadatos y configuración de ruff y pytest
-├── render.yaml, Procfile          # Despliegue en Render
-├── requirements.txt               # Dependencias del servicio, con versiones fijas
-└── requirements-dev.txt           # Dependencias de desarrollo, pruebas y notebook
+│       ├── esquemas.py                  # Formato de entrada y salida
+│       └── main.py                      # Servicio FastAPI
+├── tests/test_servicio.py               # Pruebas
+├── requirements.txt                     # Dependencias con versiones fijas
+├── render.yaml                          # Configuración para Render
+└── .python-version                      # Python 3.11
 ```
 
-## Puesta en marcha
+## Ejecución local
 
-Preparación, una sola vez, desde la raíz del repositorio:
+Desde la raíz del repositorio:
 
 ```bash
-git clone https://github.com/SU_USUARIO/prediccion-canciones.git
-cd prediccion-canciones
+git clone https://github.com/ebuitrago/demo-reg-clas-canciones.git
+cd demo-reg-clas-canciones
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+pytest -q                            # comprueba que models/modelo.pkl carga y responde
+uvicorn src.app.main:app --reload    # http://127.0.0.1:8000/docs
 ```
 
-Parte 1, regresión lineal:
+Con el servicio arriba, en otra terminal:
 
 ```bash
-python -m src.entrenar_regresion   # escribe models/modelo.joblib con la regresión y su ficha
-pytest                             # todas las pruebas deben pasar
-uvicorn src.app.main:app --reload --port 8000
-```
-
-En otra terminal, con el entorno activo:
-
-```bash
-python -m src.probar_servicio      # prueba de humo, la misma que se usa para calificar
-python -m src.consumir             # reportes/lista_promocion.csv, ordenada por popularidad esperada
-```
-
-Parte 2, clasificación binaria, con el mismo servicio:
-
-```bash
-python -m src.entrenar_clasificacion   # reemplaza models/modelo.joblib con el clasificador y su ficha
-pytest
-uvicorn src.app.main:app --reload --port 8000
 python -m src.probar_servicio
-python -m src.consumir                 # la lista se ordena ahora por probabilidad de hit
 ```
 
-Para volver a la parte 1 basta con ejecutar de nuevo `python -m src.entrenar_regresion`. Conserve un commit por cada artefacto: el historial de git es la evidencia de las dos entregas.
+## Publicar en Render
 
-En Linux, macOS o Codespaces, `make regresion`, `make clasificacion`, `make probar`, `make lint` y `make servir` ejecutan los mismos comandos.
+Render tiene un plan gratuito que no pide tarjeta de crédito.
 
-Para publicar el servicio en Render, cree un Blueprint desde su fork: Render lee `render.yaml` y cada `git push` a `main` vuelve a desplegar, así que pasar de la parte 1 a la parte 2 en producción consiste en hacer push del nuevo artefacto, sin cambiar la URL. Los pasos, los límites del plan gratuito, la alternativa con Codespaces y la lista de entregables están en [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md).
+1. Cree en su cuenta de GitHub un repositorio propio con este contenido y su `models/modelo.pkl` (puede usar **Fork** o **Use this template**, o subir los archivos).
+2. Entre a <https://render.com> con su cuenta de GitHub.
+3. En el panel elija **New +**, luego **Blueprint**, seleccione su repositorio y confirme con **Apply**. Render lee `render.yaml` y construye el servicio en 3 a 5 minutos.
+4. Copie la URL que asigna Render y compruébela:
 
-## Calidad y reproducibilidad
+   ```bash
+   python -m src.probar_servicio https://su-servicio.onrender.com
+   ```
 
-| Práctica | Implementación |
-|---|---|
-| Versiones fijas | `requirements.txt` para el servicio y `requirements-dev.txt` para desarrollo. El artefacto guarda las versiones con que se creó y `cargar()` avisa si no coinciden con las del entorno. |
-| Semilla y partición fijas | `SEMILLA` y `ANIO_CORTE` en `src/config.py`; la partición temporal está en `src/datos.py`. |
-| Pruebas automáticas | `tests/test_datos.py` revisa el CSV (nulos, duplicados, rangos, coherencia de `es_hit`); `test_variables.py`, que no haya variables posteriores entre las entradas; `test_artefacto.py`, el contrato de la ficha y que el modelo supere su línea base; `test_servicio.py`, las rutas y el rechazo de entradas inválidas. |
-| Estilo | `ruff check .` con la configuración de `pyproject.toml`, también sobre el notebook. |
-| Integración continua | `.github/workflows/ci.yml` ejecuta el estilo y las pruebas en cada push y pull request. |
-| Rutas independientes de la carpeta de trabajo | `src/config.py` resuelve las rutas desde la raíz del repositorio. |
+Cada vez que suba un cambio a GitHub, Render vuelve a publicar el servicio con la misma URL. Para pasar a la Semana 10 basta con subir el nuevo `models/modelo.pkl`.
+
+En el plan gratuito, el servicio se suspende tras 15 minutos sin uso y tarda cerca de un minuto en responder la primera petición. La prueba de humo espera hasta 90 segundos.
 
 ## Ruta del taller
 
 | Fase | Tema | Estado | Contenido en el repositorio |
-|--------|------|--------|-----------------------------|
-| 1 | Regresión e IA para analítica | Disponible | Parte 1: notebook, artefacto de regresión con ficha y corte de promoción, servicio, cliente y despliegue |
-| 2 | Clasificación binaria | Siguiente | Parte 2: el mismo servicio publicado con otro artefacto (`es_hit`, costos de error y umbral) |
+|------|------|--------|-----------------------------|
+| 1 | Regresión e IA para analítica | Disponible | `src/entrenar_semana9_regresion.py` y el modelo de referencia en `models/modelo.pkl` |
+| 2 | Clasificación binaria | Siguiente | `src/entrenar_semana10_clasificacion.py`: el mismo servicio con otro `models/modelo.pkl` |
 
-## Licencia
+## Problemas frecuentes
 
-El código se distribuye bajo licencia MIT (ver [`LICENSE`](LICENSE)). Los datos de `data/canciones.csv` son sintéticos y se generaron para este taller.
+| Síntoma | Qué hacer |
+|---|---|
+| Aviso de que el modelo se creó con otra versión de scikit-learn | Reentrene con las versiones de `requirements.txt` |
+| `503` en `/modelo` o `/predecir` | No existe `models/modelo.pkl` en el repositorio: súbalo |
+| `422` en `/predecir` | La entrada no cumple el formato de `src/app/esquemas.py`; el detalle de la respuesta indica el campo |
+| `AttributeError` al cargar el modelo | El pipeline usa una función que no está en `src/variables.py`: muévala allí y reentrene |
+| `ModuleNotFoundError: No module named 'src'` | Ejecute los comandos desde la raíz del repositorio |
+| La primera petición a Render tarda o falla | El servicio estaba suspendido; repita en un minuto |
 
 ---
 

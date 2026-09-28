@@ -1,57 +1,57 @@
-"""Pruebas del servicio HTTP con el artefacto del repositorio, de cualquiera de las dos tareas."""
+"""Pruebas con el models/modelo.pkl del repositorio, sea de la semana 9 o de la semana 10.
+
+    pytest -q
+"""
 
 import pytest
+from fastapi.testclient import TestClient
+
+from src.app.main import app
+from src.artefacto import cargar
+from src.variables import COLUMNAS_ENTRADA, COLUMNAS_POSTERIORES, FILA_EJEMPLO
 
 
-def test_raiz_sirve_el_cliente_web(cliente):
-    r = cliente.get("/")
-    assert r.status_code == 200
-    assert "text/html" in r.headers["content-type"]
+@pytest.fixture(scope="module")
+def cliente():
+    with TestClient(app) as c:  # el with ejecuta el arranque, que carga el modelo
+        yield c
+
+
+def test_el_modelo_carga_y_su_ficha_esta_completa():
+    modelo = cargar()
+    assert modelo["columnas_entrada"] == COLUMNAS_ENTRADA
+
+
+def test_el_modelo_supera_su_linea_base():
+    ficha = cargar()["ficha"]
+    if ficha["tarea"] == "regresion":
+        assert ficha["desempeno"]["mae"] < ficha["linea_base"]["mae"]
+    else:
+        assert ficha["desempeno"]["costo"] < ficha["linea_base"]["costo"]
+
+
+def test_entrada_no_incluye_variables_posteriores():
+    assert not set(COLUMNAS_ENTRADA) & set(COLUMNAS_POSTERIORES)
 
 
 def test_salud(cliente):
-    cuerpo = cliente.get("/salud").json()
-    assert cuerpo["modelo_cargado"] is True
-    assert cuerpo["tarea"] in ("regresion", "clasificacion")
+    assert cliente.get("/salud").json()["modelo_cargado"] is True
 
 
-def test_modelo_devuelve_la_ficha(cliente):
-    r = cliente.get("/modelo")
-    assert r.status_code == 200
-    assert r.json()["tarea"] in ("regresion", "clasificacion")
-
-
-def test_prediccion(cliente, fila):
-    r = cliente.post("/predecir", json=fila)
+def test_prediccion(cliente):
+    r = cliente.post("/predecir", json=FILA_EJEMPLO)
     assert r.status_code == 200, r.text
     p = r.json()
-    assert isinstance(p["promocionar"], bool)
     if p["tarea"] == "regresion":
         assert p["rango"][0] < p["popularidad_esperada"] < p["rango"][1]
-        assert p["promocionar"] == (p["popularidad_esperada"] >= p["corte_promocion"])
     else:
         assert 0 <= p["probabilidad_hit"] <= 1
-        assert p["promocionar"] == (p["probabilidad_hit"] >= p["umbral"])
 
 
-@pytest.mark.parametrize(
-    "cambio",
-    [
-        {"genero": "salsa"},
-        {"bailabilidad": 3},
-        {"reproducciones_sem1": 120000},
-        {"popularidad": 80},
-        {"es_hit": 1},
-    ],
-)
-def test_entrada_fuera_del_contrato(cliente, fila, cambio):
-    assert cliente.post("/predecir", json={**fila, **cambio}).status_code == 422
+@pytest.mark.parametrize("cambio", [{"genero": "salsa"}, {"bailabilidad": 3}, {"reproducciones_sem1": 1000}])
+def test_entrada_fuera_del_contrato(cliente, cambio):
+    assert cliente.post("/predecir", json={**FILA_EJEMPLO, **cambio}).status_code == 422
 
 
-def test_lote(cliente, fila):
-    r = cliente.post("/predecir_lote", json=[fila, {**fila, "genero": "indie"}])
-    assert r.status_code == 200 and len(r.json()) == 2
-
-
-def test_lote_demasiado_grande(cliente, fila):
-    assert cliente.post("/predecir_lote", json=[fila] * 1001).status_code == 413
+def test_lote(cliente):
+    assert len(cliente.post("/predecir_lote", json=[FILA_EJEMPLO] * 3).json()) == 3

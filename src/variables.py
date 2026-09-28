@@ -1,13 +1,21 @@
-"""Variables de entrada, variables derivadas y preprocesamiento comunes a las dos partes del taller.
+"""Datos, variables de entrada y preprocesamiento comunes a las semanas 9 y 10.
 
-El servicio importa este módulo al cargar el artefacto: si un pipeline usa una función que no
-está aquí, el archivo .joblib no se puede cargar. Por eso toda variable derivada se define en
-este módulo y no en el notebook.
+El servicio importa este módulo al cargar el modelo: si un pipeline usa una función que no
+está aquí (por ejemplo, una variable derivada definida solo en el notebook), el archivo
+.pkl no se puede cargar. Por eso las variables derivadas se definen en este módulo.
 """
+
+from pathlib import Path
 
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
+RAIZ = Path(__file__).resolve().parent.parent
+RUTA_DATOS = RAIZ / "data" / "canciones.csv"
+
+# Partición temporal: se entrena con anio < ANIO_CORTE y se evalúa con anio >= ANIO_CORTE.
+ANIO_CORTE = 2020
 
 # Columnas que el servicio recibe en cada petición: las que existen antes del lanzamiento.
 COLUMNAS_ENTRADA = [
@@ -25,13 +33,10 @@ COLUMNAS_ENTRADA = [
 CATEGORICAS = ["genero"]
 GENEROS = ["pop", "urbano", "rock", "electronica", "indie"]
 
-# Columnas del conjunto de datos que no pueden entrar al modelo en ninguna de las dos partes
-# porque no existen en el momento de decidir o porque se derivan del objetivo.
+# Columnas que no existen en el momento de decidir o que se derivan del objetivo.
 COLUMNAS_POSTERIORES = ["reproducciones_sem1", "popularidad", "es_hit"]
 
-DURACION_REFERENCIA = 3.5  # minutos; centro de la variable cuadrática
-
-# Canción de ejemplo usada por las pruebas, la prueba de humo y la documentación.
+# Canción de ejemplo usada por las pruebas y la prueba de humo.
 FILA_EJEMPLO = {
     "bailabilidad": 0.72,
     "energia": 0.65,
@@ -47,13 +52,9 @@ FILA_EJEMPLO = {
 
 
 def derivadas(X: pd.DataFrame) -> pd.DataFrame:
-    """Agrega las variables derivadas.
-
-    Se calculan fila a fila con constantes fijadas de antemano, así que no aprenden nada de
-    otros registros y pueden ir dentro del pipeline sin causar fuga.
-    """
+    """Agrega las variables derivadas. Se calculan fila a fila, sin aprender de otros registros."""
     X = X.copy()
-    X["duracion_c2"] = (X["duracion_min"] - DURACION_REFERENCIA) ** 2
+    X["duracion_c2"] = (X["duracion_min"] - 3.5) ** 2
     return X
 
 
@@ -66,3 +67,20 @@ def preprocesamiento() -> ColumnTransformer:
             ("num", StandardScaler(), numericas),
         ]
     )
+
+
+def cargar_canciones(ruta: Path = RUTA_DATOS) -> pd.DataFrame:
+    """Lee el CSV ordenado por año de lanzamiento."""
+    return pd.read_csv(ruta).sort_values("anio", kind="stable").reset_index(drop=True)
+
+
+def particion_temporal(datos: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Máscaras de entrenamiento (1995-2019) y prueba (2020-2025)."""
+    entrenamiento = datos["anio"] < ANIO_CORTE
+    return entrenamiento, ~entrenamiento
+
+
+def resumen_periodo(datos: pd.DataFrame, mascara: pd.Series) -> dict:
+    """Periodo y número de canciones de una partición, para la ficha."""
+    anios = datos.loc[mascara, "anio"]
+    return {"periodo": f"{anios.min()}-{anios.max()}", "n": int(mascara.sum())}
