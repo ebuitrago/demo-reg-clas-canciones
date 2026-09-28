@@ -4,7 +4,7 @@
 
 Repositorio base del taller en dos sprints: regresión lineal y clasificación binaria
 
-[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org)
+[![Python](https://img.shields.io/badge/Python-3.11%20a%203.13-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.6-F7931E?logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
 [![Deploy](https://img.shields.io/badge/Deploy-Render-46E3B7?logo=render&logoColor=white)](https://render.com)
@@ -85,7 +85,14 @@ El pipeline recibe las 10 columnas crudas de `COLUMNAS_ENTRADA` (`src/variables.
 
 La ficha debe tener `nombre`, `tarea` (`"regresion"` o `"clasificacion"`), `objetivo`, `momento_prediccion`, `variables_excluidas`, `linea_base`, `desempeno` y `decision`. En regresión, `desempeno` lleva `mae` y `decision` lleva `corte_promocion`. En clasificación, `decision` lleva `umbral` y el modelo debe tener `predict_proba`. Los scripts de `src/` traen una ficha completa de cada tipo.
 
-Entrene con las versiones de `requirements.txt`, porque un `.pkl` creado con otra versión de scikit-learn puede no cargar en Render. En Colab, ejecute primero `pip install -r requirements.txt`.
+Entrene con las versiones de `requirements.txt`, porque un `.pkl` creado con otra versión de scikit-learn puede no cargar en Render. Si trabaja en Google Colab, clone el repositorio e instale esas versiones en la primera celda:
+
+```python
+!git clone https://github.com/ebuitrago/demo-reg-clas-canciones.git
+%pip install -q -r demo-reg-clas-canciones/requirements.txt
+```
+
+Luego reinicie la sesión (menú Entorno de ejecución > Reiniciar sesión) para que Colab use las versiones instaladas. En Colab la ruta del repositorio es `/content/demo-reg-clas-canciones`.
 
 El archivo debe pesar menos de 20 MB. Un Random Forest sin límite de profundidad puede pasarse.
 
@@ -109,11 +116,13 @@ Ejemplo de entrada para `/predecir`:
 Respuesta con el modelo del sprint 1:
 
 ```json
-{"tarea": "regresion", "popularidad_esperada": 84.8, "rango": [79.1, 90.6], "corte_promocion": 65.0,
+{"tarea": "regresion", "modelo": "lineal + duración² (2026-09-27)",
+ "popularidad_esperada": 84.8, "rango": [79.1, 90.6], "corte_promocion": 65.0,
+ "probabilidad_hit": null, "umbral": null,
  "promocionar": true, "explicacion": "popularidad esperada 84.8 (±5.75) supera el corte 65"}
 ```
 
-Con el modelo del sprint 2, la misma entrada devuelve `probabilidad_hit` y `umbral` en lugar de `popularidad_esperada`, `rango` y `corte_promocion`. Si la entrada trae un campo que no existe antes del lanzamiento, como `reproducciones_sem1`, el servicio responde `422`.
+Con el modelo del sprint 2, la misma entrada trae valores en `probabilidad_hit` y `umbral`, y `popularidad_esperada`, `rango` y `corte_promocion` llegan en `null`. Si la entrada trae un campo que no existe antes del lanzamiento, como `reproducciones_sem1`, el servicio responde `422`.
 
 ## Estructura
 
@@ -132,18 +141,17 @@ demo-reg-clas-canciones/
 │       └── main.py                 # Servicio FastAPI
 ├── tests/test_servicio.py          # Pruebas
 ├── requirements.txt                # Dependencias con versiones fijas
-├── render.yaml                     # Configuración para Render
-└── .python-version                 # Python 3.11
+└── render.yaml                     # Configuración para Render (Python 3.11)
 ```
 
 ## Ejecución local
 
-Desde la raíz del repositorio:
+Necesita Python 3.11, 3.12 o 3.13. **No use Python 3.14 ni 3.10 o anteriores**: con esas versiones la instalación falla. Compruebe su versión con `python --version`; en Windows, `py --list` muestra las versiones instaladas. Si solo tiene 3.14, instale también la 3.13 desde <https://www.python.org/downloads/> y cree el entorno con ella.
 
 ```bash
 git clone https://github.com/ebuitrago/demo-reg-clas-canciones.git
 cd demo-reg-clas-canciones
-python -m venv .venv
+python -m venv .venv                 # Windows, eligiendo versión: py -3.13 -m venv .venv
 source .venv/bin/activate            # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
@@ -161,7 +169,7 @@ python -m src.probar_servicio
 
 Render tiene un plan gratuito que no pide tarjeta de crédito.
 
-1. Cree en su cuenta de GitHub un repositorio propio con este contenido y su `models/modelo.pkl`. Puede usar **Fork**, **Use this template** o subir los archivos.
+1. Cree en su cuenta de GitHub un repositorio propio con este contenido y su `models/modelo.pkl`. Puede usar **Fork** o crear un repositorio nuevo y subir los archivos.
 2. Entre a <https://render.com> con su cuenta de GitHub.
 3. En el panel elija **New +**, luego **Blueprint**, seleccione su repositorio y confirme con **Apply**. Render lee `render.yaml` y tarda entre 3 y 5 minutos en construir el servicio.
 4. Copie la URL que asigna Render y compruébela:
@@ -178,6 +186,8 @@ En el plan gratuito el servicio se suspende tras 15 minutos sin uso, y la primer
 
 | Síntoma | Qué hacer |
 |---|---|
+| `pip install` falla con "No matching distribution found" | Su versión de Python no es compatible. Cree el entorno con Python 3.11, 3.12 o 3.13 |
+| En Windows, PowerShell no deja ejecutar `activate` | Ejecute una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y vuelva a intentar |
 | Aviso de que el modelo se creó con otra versión de scikit-learn | Reentrene con las versiones de `requirements.txt` |
 | `503` en `/modelo` o `/predecir` | Falta `models/modelo.pkl` en el repositorio |
 | `422` en `/predecir` | La entrada no cumple el formato de `src/app/esquemas.py`; el detalle de la respuesta indica el campo |

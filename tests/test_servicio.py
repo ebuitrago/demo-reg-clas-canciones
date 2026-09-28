@@ -3,8 +3,13 @@
     pytest -q
 """
 
+import warnings
+
 import pytest
-from fastapi.testclient import TestClient
+
+# Aviso interno de starlette/anyio al importar TestClient; no afecta las pruebas.
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="starlette")
+from fastapi.testclient import TestClient  # noqa: E402
 
 from src.app.main import app
 from src.artefacto import cargar
