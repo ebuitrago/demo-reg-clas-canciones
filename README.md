@@ -198,5 +198,5 @@ En el plan gratuito el servicio se suspende tras 15 minutos sin uso, y la primer
 ---
 
 <div align="center">
-<sub>Universidad Central, Ingeniería de Sistemas, Data Analytics, 2026-2. Prof. Elias Buitrago Bolivar</sub>
+<sub>Universidad Central, Ingeniería de Sistemas, 2026-2. Prof. Elias Buitrago Bolivar</sub>
 </div>
