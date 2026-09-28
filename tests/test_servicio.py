@@ -1,4 +1,4 @@
-"""Pruebas con el models/modelo.pkl del repositorio, sea de la semana 9 o de la semana 10.
+"""Pruebas con el models/modelo.pkl del repositorio, sea del sprint 1 (regresión) o del sprint 2 (clasificación).
 
     pytest -q
 """

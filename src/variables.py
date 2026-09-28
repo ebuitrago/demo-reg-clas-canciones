@@ -1,4 +1,4 @@
-"""Datos, variables de entrada y preprocesamiento comunes a las semanas 9 y 10.
+"""Datos, variables de entrada y preprocesamiento comunes a los dos sprints.
 
 El servicio importa este módulo al cargar el modelo: si un pipeline usa una función que no
 está aquí (por ejemplo, una variable derivada definida solo en el notebook), el archivo
