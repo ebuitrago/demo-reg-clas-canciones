@@ -1,93 +1,103 @@
-# El contrato del artefacto
+# Contrato del artefacto
 
-> Un modelo sin ficha es un número sin sustento. El artefacto empaqueta ambos para que viajen juntos: el pipeline que predice y la ficha que dice por qué se le puede creer.
+El artefacto es el archivo que conecta el análisis con el servicio. Empaqueta el pipeline entrenado junto con su ficha, de modo que la predicción y la evidencia que la respalda viajen juntas. Este documento describe su estructura, lo que exige y cómo reemplazarlo en cada parte del taller.
 
-## Qué es el artefacto
+## Estructura
 
 `models/modelo.joblib` es un diccionario serializado con `joblib`:
 
 ```python
-{"pipeline": <Pipeline de scikit-learn entrenado>,
- "ficha": {...},                       # ver abajo
- "columnas_entrada": [...]}            # las de src/variables.py, en ese orden
+{
+    "pipeline": ...,           # Pipeline de scikit-learn entrenado
+    "ficha": {...},            # descripción y evidencia del modelo
+    "columnas_entrada": [...], # COLUMNAS_ENTRADA de src/variables.py, en ese orden
+}
 ```
 
-`src/artefacto.py` tiene las dos únicas funciones que deben tocarlo:
+Solo dos funciones de `src/artefacto.py` deben leerlo o escribirlo:
 
 | Función | Qué hace | Qué verifica |
 |---|---|---|
-| `guardar(pipeline, ficha, ruta)` | Escribe el artefacto | Campos obligatorios de la ficha, que el pipeline predice una fila de ejemplo, que un clasificador tiene `predict_proba`, tamaño < 20 MB. Agrega `fecha` y `versiones`. |
-| `cargar(ruta)` | Lo lee al arrancar el servicio | Que estén las tres claves; avisa si la versión de scikit-learn no coincide |
+| `guardar(pipeline, ficha, ruta)` | Escribe el artefacto | Campos obligatorios de la ficha según la tarea; que el pipeline prediga una fila de ejemplo; que un clasificador tenga `predict_proba`; tamaño menor de 20 MB. Agrega `fecha` y `versiones`. |
+| `cargar(ruta)` | Lo lee al arrancar el servicio | Las tres claves, la ficha y la versión de scikit-learn; avisa si la versión no coincide |
 
-Si `guardar()` rechaza su ficha, el mensaje dice exactamente qué falta. No escriba el `.joblib` con `joblib.dump` directamente: se saltaría las verificaciones y el servicio podría cargar un modelo que no puede responder.
+Si `guardar()` rechaza una ficha, el mensaje indica qué falta. Escribir el archivo con `joblib.dump` directamente omite estas verificaciones y puede dejar en producción un modelo que no responde.
 
-## El pipeline
+## Pipeline
 
-El pipeline recibe las **columnas crudas** de `src/variables.py` (`COLUMNAS_ENTRADA`) y devuelve la predicción. Todo el preprocesamiento va **dentro** del pipeline: variables derivadas, codificación de `genero`, escalado. Así lo que se entrena es exactamente lo que se despliega.
+El pipeline recibe las columnas crudas de `COLUMNAS_ENTRADA` y devuelve la predicción. Todo el preprocesamiento va dentro: variables derivadas, codificación de `genero` y escalado. Así lo que se evalúa en el notebook es exactamente lo que se despliega.
 
 ```python
-Pipeline([
-    ("derivadas", FunctionTransformer(derivadas)),        # src/variables.py: duracion_c2
-    ("columnas", ColumnTransformer([("cat", OneHotEncoder(...), ["genero"]),
-                                    ("num", StandardScaler(), numericas)])),
-    ("modelo", LinearRegression()),                       # <- aquí va el suyo
-])
+make_pipeline(
+    FunctionTransformer(derivadas),  # src/variables.py: agrega duracion_c2
+    preprocesamiento(),              # src/variables.py: one-hot de genero y escalado
+    LinearRegression(),              # parte 1; en la parte 2, LogisticRegression(max_iter=1000)
+)
 ```
 
-Si necesita otra variable derivada, agréguela en `derivadas()` de `src/variables.py` y no en el notebook: el servicio importa esa función al cargar el artefacto, y si no la encuentra el `.joblib` no carga.
+Una variable derivada nueva se agrega en `derivadas()` de `src/variables.py`. Si se define en el notebook, el servicio no la encuentra al cargar el `.joblib` y el artefacto no carga.
 
-## La ficha
+## Ficha
 
-Es la parte analítica del entregable y lo que se califica. `GET /modelo` la devuelve tal cual. Campos obligatorios (los exige `guardar()`):
+La ficha es lo que `GET /modelo` devuelve y lo primero que se revisa en la entrega. Campos obligatorios en las dos tareas:
 
-| Campo | Qué contiene | De dónde sale en su notebook |
+| Campo | Contenido | Origen en el notebook |
 |---|---|---|
-| `nombre` | Nombre corto del modelo elegido | El renglón del registro comparativo que ganó |
+| `nombre` | Nombre corto del modelo | La corrida seleccionada en el registro comparativo |
 | `tarea` | `"regresion"` o `"clasificacion"` | |
-| `objetivo` | Qué predice y en qué unidad | Definición del problema |
-| `momento_prediccion` | Cuándo se usa la predicción | Fase 1: fija qué variables están disponibles |
+| `objetivo` | Qué predice y en qué unidad | Planteamiento del problema |
+| `momento_prediccion` | Cuándo se usa la predicción | Define qué variables están disponibles |
 | `variables_excluidas` | Diccionario `{variable: razón}` | Control de fuga |
-| `linea_base` | Descripción y MAE de la línea base | Fase 3 |
-| `desempeno` | Para regresión, al menos `mae` (en puntos de popularidad); idealmente `rmse`, `r2`, `sesgo` | Fase 4, sobre la prueba temporal |
-| `decision` | Para regresión, `corte_promocion`; para clasificación, `umbral` | Fase 5: la regla de negocio |
+| `linea_base` | Descripción y métrica de la línea base | Registro comparativo |
+| `desempeno` | Métricas sobre la prueba temporal | Registro comparativo |
+| `decision` | Regla de negocio | Conclusión |
 
-Campos opcionales que el modelo de referencia incluye y el cliente web muestra: `entrenamiento` y `prueba` (periodo, n, tipo), `por_genero`, `limites`. `fecha` y `versiones` los agrega `guardar()`.
+Campos adicionales que exige cada tarea:
 
-El servicio usa tres valores de la ficha para responder: `desempeno.mae` (el rango ± de cada predicción), `decision.corte_promocion` (la decisión) y `nombre` + `fecha` (la etiqueta del modelo). Si el MAE de la ficha no es el de su evaluación, el rango que reporta el servicio es falso; si el corte no es el que usted eligió, la lista de promoción no es la suya.
+| Tarea | En `desempeno` | En `decision` | En el pipeline |
+|---|---|---|---|
+| Regresión | `mae`, en puntos de popularidad | `corte_promocion` | `predict` |
+| Clasificación | (recomendado: `precision`, `recall`, `matriz_confusion`, `costo`) | `umbral` (recomendado: `costos`) | `predict_proba` |
 
-## Cómo reemplazar el modelo por el suyo
+Campos opcionales que incluyen los modelos de referencia y que el cliente web muestra: `entrenamiento`, `prueba`, `por_genero` y `limites`. `fecha` y `versiones` los agrega `guardar()`.
 
-**Opción A. Editar `src/entrenar.py`** (recomendada): cambie el estimador en `construir_pipeline()`, ajuste la ficha en `entrenar()` con sus cifras y ejecute:
+El servicio usa tres valores de la ficha para construir cada respuesta. En regresión, `desempeno.mae` define el rango de la predicción y `decision.corte_promocion` la decisión; en clasificación, `decision.umbral` define la decisión. En ambas, `nombre` y `fecha` identifican el modelo. Si esas cifras no son las de su evaluación, el servicio reporta un rango o una decisión que su análisis no respalda.
+
+## Reemplazar el modelo
+
+Opción A, recomendada: edite `construir_pipeline()` y `NOMBRE` en el script de la parte correspondiente y ejecútelo.
 
 ```bash
-python -m src.entrenar        # escribe models/modelo.joblib e imprime la ficha
-pytest -q                     # las 7 pruebas deben seguir pasando
-python consumir.py            # produce su lista de promoción
+python -m src.entrenar_regresion        # parte 1
+python -m src.entrenar_clasificacion    # parte 2
+pytest                                  # las pruebas deben seguir pasando
 ```
 
-**Opción B. Guardarlo desde el notebook**, con el repositorio clonado y su entorno instalado:
+Los dos scripts aceptan parámetros para explorar la regla de decisión sin editar código:
+
+```bash
+python -m src.entrenar_regresion --corte 70
+python -m src.entrenar_clasificacion --costo-fn 5 --costo-fp 1
+```
+
+Opción B: guarde desde el notebook, con el entorno del repositorio. La última sección de `notebooks/01_regresion_popularidad.ipynb` lo hace y compara el MAE de la ficha con el del registro.
 
 ```python
-import sys; sys.path.insert(0, "ruta/a/prediccion-canciones")
 from src.artefacto import guardar
-guardar(mi_pipeline, mi_ficha, "ruta/a/prediccion-canciones/models/modelo.joblib")
+guardar(mi_pipeline, mi_ficha)          # escribe models/modelo.joblib
 ```
 
-Después, en cualquiera de las dos opciones:
+En cualquiera de las dos opciones, confirme el cambio en git con un mensaje que diga qué modelo es y qué resultado obtuvo:
 
 ```bash
-git add models/modelo.joblib src/entrenar.py
-git commit -m "modelo propio: <qué cambió y qué dio>"
-git push                      # Render redespliega solo
+git add models/modelo.joblib src/
+git commit -m "Parte 1: lineal + duración², MAE 5.75 frente a 10.44 de la línea base"
+git push
 ```
 
-## Reglas que no se negocian
+## Requisitos
 
-1. **Mismas versiones.** El artefacto se crea con las versiones de `requirements.txt`. Un `.joblib` de otra versión de scikit-learn puede no cargar. En Colab: `pip install -r requirements.txt` antes de entrenar.
-2. **Menos de 20 MB.** El plan gratuito de Render tiene 512 MB de memoria. Un Random Forest sin `max_depth` se pasa fácilmente; use menos árboles o limite la profundidad.
-3. **Sin fuga.** `reproducciones_sem1` y `es_hit` no están en `COLUMNAS_ENTRADA` y el esquema HTTP no las acepta. Si su pipeline las necesita, el modelo está mal planteado, no el servicio.
-4. **La ficha dice la verdad.** Las cifras de la ficha son las del registro comparativo de su notebook, sobre la prueba temporal. Es lo primero que se revisa.
-
-## Cambiar de tarea
-
-El mismo contrato sirve para clasificación: `tarea = "clasificacion"`, un pipeline con `predict_proba` y `decision.umbral` en la ficha. El servicio detecta la tarea al cargar y `/predecir` responde con `probabilidad_hit`, `umbral` y la decisión. `semana_10/` tiene el ejemplo completo.
+1. Mismas versiones. El artefacto se crea con las versiones de `requirements.txt`; un `.joblib` de otra versión de scikit-learn puede no cargar. En Colab, instale primero `pip install -r requirements.txt`.
+2. Menos de 20 MB. El plan gratuito de Render tiene 512 MB de memoria. Un Random Forest sin `max_depth` supera el límite con facilidad; use menos árboles o limite la profundidad.
+3. Sin fuga. `reproducciones_sem1`, `popularidad` y `es_hit` no están en `COLUMNAS_ENTRADA` y el esquema HTTP las rechaza. Si un modelo las necesita, el problema está en el planteamiento.
+4. Ficha verificable. Las cifras de la ficha son las del registro comparativo sobre la prueba temporal. `tests/test_artefacto.py` comprueba además que el modelo supere su línea base.

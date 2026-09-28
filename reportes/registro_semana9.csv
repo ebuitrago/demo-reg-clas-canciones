@@ -1,0 +1,12 @@
+corrida,validacion,MAE,RMSE,R2
+media global,temporal,11.06,13.77,-0.045
+media por género,temporal,10.44,13.16,0.047
+"lineal, todas",temporal,1.41,1.97,0.979
+"lineal, válidas",temporal,5.87,7.36,0.701
+válidas sin genero,temporal,6.9,8.5,0.602
+válidas + interacción,temporal,5.89,7.39,0.699
+válidas + duración²,temporal,5.75,7.15,0.718
+Random Forest,temporal,6.95,8.7,0.583
+HGB,temporal,6.63,8.38,0.613
+lineal (al azar),aleatoria,5.82,7.33,0.719
+HGB (al azar),aleatoria,6.52,8.21,0.647

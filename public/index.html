@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Predicción de popularidad: cliente</title>
+<title>Predicción de popularidad de canciones</title>
 <!-- Cliente web de la demo: consume el servicio de predicción por HTTP.
      No contiene el modelo ni la ficha: todo lo pide al servidor. -->
 <style>
@@ -35,13 +35,13 @@
 
 <header>
   <h1>Predicción de popularidad de canciones</h1>
-  <p>Aplicación CLIENTE: el modelo y su ficha viven en el servidor</p>
+  <p>Cliente web del servicio de predicción. El modelo y su ficha están en el servidor.</p>
 </header>
 
 <main>
   <section>
     <h2>Ficha del modelo cargado</h2>
-    <p>Lo que el servicio declara sobre sí mismo antes de que usted le crea una sola predicción.</p>
+    <p>Datos del modelo cargado, tal como los publica <code>GET /modelo</code>.</p>
     <table><tbody id="ficha"></tbody></table>
     <button class="secundario" onclick="cargarFicha()">Actualizar ficha</button>
   </section>
@@ -66,7 +66,7 @@
     <div id="resultado"></div>
   </section>
 
-  <p id="estado">Consultando servidor...</p>
+  <p id="estado">Consultando el servidor</p>
 </main>
 
 <script>
@@ -133,7 +133,7 @@ async function estado() {
   try {
     const r = await fetch(SERVIDOR + "/salud");
     const s = await r.json();
-    document.getElementById("estado").textContent = s.modelo_cargado ? `Servidor activo. Modelo: ${s.modelo}` : "Servidor activo, sin modelo cargado";
+    document.getElementById("estado").textContent = s.modelo_cargado ? `Servidor activo. Modelo: ${s.modelo}, tarea: ${s.tarea}` : "Servidor activo, sin modelo cargado";
   } catch (e) {
     document.getElementById("estado").textContent = "No se pudo contactar al servidor";
   }
