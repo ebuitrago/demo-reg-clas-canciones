@@ -199,16 +199,16 @@ Para publicar el servicio en Render, cree un Blueprint desde su fork: Render lee
 | Integración continua | `.github/workflows/ci.yml` ejecuta el estilo y las pruebas en cada push y pull request. |
 | Rutas independientes de la carpeta de trabajo | `src/config.py` resuelve las rutas desde la raíz del repositorio. |
 
-## Ruta del curso
+## Ruta del taller
 
-| Semana | Tema | Estado | Contenido en el repositorio |
+| Fase | Tema | Estado | Contenido en el repositorio |
 |--------|------|--------|-----------------------------|
-| 9 | Regresión e IA para analítica | Disponible | Parte 1: notebook, artefacto de regresión con ficha y corte de promoción, servicio, cliente y despliegue |
-| 10 | Clasificación binaria | Siguiente | Parte 2: el mismo servicio publicado con otro artefacto (`es_hit`, costos de error y umbral) |
+| 1 | Regresión e IA para analítica | Disponible | Parte 1: notebook, artefacto de regresión con ficha y corte de promoción, servicio, cliente y despliegue |
+| 2 | Clasificación binaria | Siguiente | Parte 2: el mismo servicio publicado con otro artefacto (`es_hit`, costos de error y umbral) |
 
 ## Licencia
 
-El código se distribuye bajo licencia MIT (ver [`LICENSE`](LICENSE)). Los datos de `data/canciones.csv` son sintéticos y se generaron para este curso.
+El código se distribuye bajo licencia MIT (ver [`LICENSE`](LICENSE)). Los datos de `data/canciones.csv` son sintéticos y se generaron para este taller.
 
 ---
 
