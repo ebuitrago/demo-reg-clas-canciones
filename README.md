@@ -2,7 +2,7 @@
 
 # Predicción de popularidad de canciones: del análisis al uso
 
-Repositorio de referencia del curso **Data Analytics**, Universidad Central, 2026-2
+Repositorio de referencia para un taller práctico sobre regresión lineal
 
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
