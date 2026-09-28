@@ -31,7 +31,6 @@ Cada sprint termina con un incremento funcionando: el servicio publicado con un 
 | Resultado de referencia (2020-2025) | MAE 5,75 frente a 10,44 de la línea base | Costo 99 frente a 318 de la línea base |
 | Regla de decisión | Promocionar si la popularidad esperada supera el corte (65) | Promocionar si la probabilidad de hit supera el umbral (0,27) |
 | Código de entrenamiento | `src/entrenar_regresion.py` | `src/entrenar_clasificacion.py` |
-| En el curso | Semana 9 | Semana 10 |
 
 En los dos sprints se entrena con las canciones de 1995 a 2019 y se evalúa con las de 2020 a 2025. El repositorio trae el modelo de referencia del sprint 1 en `models/modelo.pkl`.
 
