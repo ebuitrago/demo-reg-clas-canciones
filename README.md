@@ -172,15 +172,6 @@ En Render: **New +** -> **Blueprint** -> su fork -> **Apply**. Render lee `rende
 
 El artefacto es un objeto de scikit-learn serializado: solo se garantiza que cargue con la **misma versión** con que se creó. Por eso `requirements.txt` fija versiones y `cargar()` avisa si no coinciden. Si entrena en Colab, instale primero `pip install -r requirements.txt` allí; si entrena en su máquina, hágalo dentro del `venv` del repositorio. Un `.joblib` que carga en su portátil y falla en Render casi siempre es una diferencia de versión. Aplica por igual al artefacto de regresión y al de clasificación.
 
-## Ruta del curso
-
-| Semana | Tema | Este repositorio |
-|--------|------|------------------|
-| **9** | Regresión e IA para analítica | ✅ Parte 1: artefacto de regresión (`popularidad`) con ficha y corte de promoción; servicio, cliente y despliegue |
-| **10** | Clasificación binaria | 🔜 Parte 2: el mismo servicio ya publicado con otro artefacto (`es_hit`, costos de error y umbral, `semana_10/`) |
-
-El servicio, el cliente y las pruebas no cambian entre las dos partes: cambia el artefacto. Ese es el punto del encadenamiento.
-
 ---
 
 <div align="center">
